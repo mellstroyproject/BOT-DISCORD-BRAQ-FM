@@ -13,6 +13,7 @@ PORT = int(os.getenv("PORT", "10000"))          # Render сам передаёт
 
 intents = discord.Intents.default()
 intents.members = True  # нужно для изменения ников и ролей
+intents.message_content = True  # нужно для команды !panel
 
 
 class NickModal(discord.ui.Modal, title="Получение роли"):
@@ -91,6 +92,21 @@ async def panel(interaction: discord.Interaction):
     )
     await interaction.channel.send(embed=embed, view=RoleView())
     await interaction.response.send_message("Панель отправлена.", ephemeral=True)
+
+
+@bot.command(name="panel")
+@commands.has_permissions(administrator=True)
+async def panel_prefix(ctx: commands.Context):
+    embed = discord.Embed(
+        title="Получение роли",
+        description="Нажмите кнопку ниже и введите ваш ник из игры.\nПосле этого вы получите роли, а ник будет обновлён.",
+        color=0x2B2D31,
+    )
+    await ctx.send(embed=embed, view=RoleView())
+    try:
+        await ctx.message.delete()
+    except discord.HTTPException:
+        pass
 
 
 @bot.event
