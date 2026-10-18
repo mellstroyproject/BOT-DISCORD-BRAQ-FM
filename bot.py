@@ -6,7 +6,8 @@ from discord.ext import commands
 from aiohttp import web
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-ROLE_ID = int(os.getenv("ROLE_ID", "0"))        # ID роли, которую выдаём
+# ID ролей через запятую, например: 123,456,789
+ROLE_IDS = [int(x) for x in os.getenv("ROLE_IDS", "").replace(" ", "").split(",") if x]
 RANK_PREFIX = os.getenv("RANK_PREFIX", "(1) ")  # приписка к нику
 PORT = int(os.getenv("PORT", "10000"))          # Render сам передаёт PORT
 
@@ -25,21 +26,23 @@ class NickModal(discord.ui.Modal, title="Получение роли"):
     async def on_submit(self, interaction: discord.Interaction):
         guild = interaction.guild
         member = interaction.user
-        role = guild.get_role(ROLE_ID)
 
-        if role is None:
+        roles = [guild.get_role(rid) for rid in ROLE_IDS]
+        roles = [r for r in roles if r is not None]
+
+        if not roles:
             await interaction.response.send_message(
-                "Роль не найдена. Сообщите администрации.", ephemeral=True
+                "Роли не найдены. Сообщите администрации.", ephemeral=True
             )
             return
 
         new_nick = f"{RANK_PREFIX}{self.nick.value.strip()}"[:32]  # лимит Discord — 32 символа
 
         try:
-            await member.add_roles(role, reason="Получение роли через панель")
+            await member.add_roles(*roles, reason="Получение роли через панель")
         except discord.Forbidden:
             await interaction.response.send_message(
-                "У бота нет прав выдать эту роль. Проверьте, что роль бота выше выдаваемой.",
+                "У бота нет прав выдать эти роли. Проверьте, что роль бота выше выдаваемых.",
                 ephemeral=True,
             )
             return
@@ -51,7 +54,7 @@ class NickModal(discord.ui.Modal, title="Получение роли"):
             nick_info = "Не удалось сменить ник (у владельца сервера или выше роли ник не меняется)."
 
         await interaction.response.send_message(
-            f"Роль выдана! {nick_info}", ephemeral=True
+            f"Роли выданы! {nick_info}", ephemeral=True
         )
 
 
@@ -83,7 +86,7 @@ bot = RoleBot(command_prefix="!", intents=intents)
 async def panel(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Получение роли",
-        description="Нажмите кнопку ниже и введите ваш ник из игры.\nПосле этого вы получите роль, а ник будет обновлён.",
+        description="Нажмите кнопку ниже и введите ваш ник из игры.\nПосле этого вы получите роли, а ник будет обновлён.",
         color=0x2B2D31,
     )
     await interaction.channel.send(embed=embed, view=RoleView())
